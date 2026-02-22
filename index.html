@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 写作助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#6366f1;--primary-light:#818cf8;--primary-dark:#4f46e5;--bg:#f8fafc;--card:#fff;--text:#1e293b;--text-secondary:#64748b;--border:#e2e8f0;--success:#10b981;--radius:16px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.container{max-width:900px;margin:0 auto;padding:20px 16px 40px}
+header{text-align:center;padding:32px 0 24px}
+header h1{font-size:28px;background:linear-gradient(135deg,var(--primary),#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+header p{color:var(--text-secondary);font-size:15px}
+.section-title{font-size:18px;font-weight:600;margin:24px 0 14px;display:flex;align-items:center;gap:8px}
+.section-title .icon{font-size:20px}
+
+/* Type Cards */
+.type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:8px}
+.type-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;user-select:none}
+.type-card:hover{border-color:var(--primary-light);transform:translateY(-2px);box-shadow:var(--shadow)}
+.type-card.active{border-color:var(--primary);background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(236,72,153,.04))}
+.type-card .emoji{font-size:32px;margin-bottom:8px;display:block}
+.type-card .name{font-size:14px;font-weight:600;color:var(--text)}
+.type-card .desc{font-size:11px;color:var(--text-secondary);margin-top:4px}
+
+/* Form */
+.form-panel{background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-top:16px;display:none}
+.form-panel.show{display:block;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;color:var(--text)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;transition:border-color .2s;background:#fff}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--primary)}
+.form-group textarea{resize:vertical;min-height:80px}
+
+/* Tone */
+.tone-group{display:flex;gap:8px;flex-wrap:wrap}
+.tone-btn{padding:8px 18px;border:1.5px solid var(--border);border-radius:20px;background:var(--card);cursor:pointer;font-size:13px;transition:all .2s;font-family:inherit}
+.tone-btn:hover{border-color:var(--primary-light)}
+.tone-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* Generate Button */
+.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;margin-top:8px}
+.gen-btn:hover{opacity:.9;transform:translateY(-1px)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.gen-btn .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Results */
+.results{margin-top:24px}
+.result-card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:14px;position:relative;animation:fadeIn .4s}
+.result-card .version-tag{display:inline-block;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:8px;margin-bottom:10px}
+.result-card .content{font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)}
+.result-card .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.result-card .actions button{padding:6px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:12px;transition:all .2s;font-family:inherit;display:flex;align-items:center;gap:4px}
+.result-card .actions button:hover{border-color:var(--primary);color:var(--primary)}
+.result-card .actions button.copied{background:var(--success);color:#fff;border-color:var(--success)}
+
+/* History */
+.history-panel{margin-top:32px}
+.history-item{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:10px;cursor:pointer;transition:all .2s}
+.history-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.history-item .meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.history-item .meta .tag{font-size:12px;background:rgba(99,102,241,.1);color:var(--primary);padding:2px 8px;border-radius:6px;font-weight:500}
+.history-item .meta .time{font-size:12px;color:var(--text-secondary)}
+.history-item .preview{font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item .del-btn{float:right;background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;opacity:0;transition:opacity .2s}
+.history-item:hover .del-btn{opacity:1}
+
+/* API Key */
+.api-key-bar{background:var(--card);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow);margin-bottom:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.api-key-bar label{font-size:13px;font-weight:500;white-space:nowrap}
+.api-key-bar input{flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace}
+.api-key-bar input:focus{outline:none;border-color:var(--primary)}
+.api-key-bar .save-btn{padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+
+/* Responsive */
+@media(max-width:600px){
+  .container{padding:12px 10px 32px}
+  header h1{font-size:24px}
+  .type-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+  .type-card{padding:14px 8px}
+  .type-card .emoji{font-size:26px}
+  .form-panel{padding:16px}
+  .api-key-bar{flex-direction:column;align-items:stretch}
+  .api-key-bar input{min-width:auto}
+}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.clear-history{background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;margin-left:auto}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>✨ AI 写作助手</h1>
+    <p>选择文案类型，输入关键信息，AI 帮你生成多个版本</p>
+  </header>
+
+  <!-- API Key -->
+  <div class="api-key-bar">
+    <label>🔑 DeepSeek API Key：</label>
+    <input type="password" id="apiKey" placeholder="sk-..." />
+    <button class="save-btn" onclick="saveApiKey()">保存</button>
+  </div>
+
+  <!-- Type Selection -->
+  <div class="section-title"><span class="icon">📝</span> 选择文案类型</div>
+  <div class="type-grid" id="typeGrid"></div>
+
+  <!-- Form Panel -->
+  <div class="form-panel" id="formPanel">
+    <div class="section-title"><span class="icon">📋</span> <span id="formTitle">填写信息</span></div>
+    <div id="formFields"></div>
+    <div class="form-group">
+      <label>🎭 语气风格</label>
+      <div class="tone-group" id="toneGroup">
+        <button class="tone-btn active" data-tone="正式">🎩 正式</button>
+        <button class="tone-btn" data-tone="轻松">😊 轻松</button>
+        <button class="tone-btn" data-tone="幽默">😄 幽默</button>
+        <button class="tone-btn" data-tone="专业">💼 专业</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>📄 生成版本数</label>
+      <select id="versionCount">
+        <option value="2">2 个版本</option>
+        <option value="3" selected>3 个版本</option>
+        <option value="5">5 个版本</option>
+      </select>
+    </div>
+    <button class="gen-btn" id="genBtn" onclick="generate()">🚀 生成文案</button>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results"></div>
+
+  <!-- History -->
+  <div class="history-panel" id="historyPanel">
+    <div class="section-title">
+      <span class="icon">📚</span> 生成历史
+      <button class="clear-history" onclick="clearHistory()">清空</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<script>
+// ========== Config ==========
+const TYPES = [
+  { id:'xiaohongshu', name:'小红书种草', emoji:'📕', desc:'种草安利文', fields:[
+    {key:'product',label:'产品/品牌名称',type:'input',placeholder:'如：戴森吹风机'},
+    {key:'features',label:'核心卖点/特色',type:'textarea',placeholder:'如：快速干发、不伤发质、颜值高'},
+    {key:'scene',label:'使用场景',type:'input',placeholder:'如：日常护发、旅行携带'},
+    {key:'price',label:'价格区间（可选）',type:'input',placeholder:'如：3000元左右'}
+  ]},
+  { id:'moments', name:'朋友圈文案', emoji:'💬', desc:'精致生活分享', fields:[
+    {key:'scene',label:'场景/主题',type:'input',placeholder:'如：周末下午茶、旅行打卡'},
+    {key:'mood',label:'心情/感受',type:'input',placeholder:'如：开心、放松、感慨'},
+    {key:'extra',label:'补充信息（可选）',type:'textarea',placeholder:'如：地点、同行人、特别经历'}
+  ]},
+  { id:'product', name:'产品描述', emoji:'🛍️', desc:'电商产品文案', fields:[
+    {key:'name',label:'产品名称',type:'input',placeholder:'如：无线蓝牙耳机'},
+    {key:'features',label:'产品特点',type:'textarea',placeholder:'如：主动降噪、30小时续航、IPX5防水'},
+    {key:'audience',label:'目标人群',type:'input',placeholder:'如：上班族、运动爱好者'},
+    {key:'price',label:'价格（可选）',type:'input',placeholder:'如：299元'}
+  ]},
+  { id:'email', name:'商务邮件', emoji:'📧', desc:'正式商务沟通', fields:[
+    {key:'recipient',label:'收件人/对象',type:'input',placeholder:'如：客户张总、合作方'},
+    {key:'purpose',label:'邮件目的',type:'textarea',placeholder:'如：邀请参加产品发布会'},
+    {key:'details',label:'关键信息',type:'textarea',placeholder:'如：时间、地点、议程等'},
+    {key:'relationship',label:'关系描述',type:'input',placeholder:'如：长期合作伙伴、初次接触'}
+  ]},
+  { id:'intro', name:'自我介绍', emoji:'👋', desc:'个人介绍文案', fields:[
+    {key:'name',label:'姓名/昵称',type:'input',placeholder:'如：小明'},
+    {key:'role',label:'身份/职业',type:'input',placeholder:'如：产品经理、大三学生'},
+    {key:'highlights',label:'亮点/经历',type:'textarea',placeholder:'如：3年互联网经验、擅长用户增长'},
+    {key:'occasion',label:'使用场合',type:'input',placeholder:'如：面试、社交活动、入职'}
+  ]},
+  { id:'weekly', name:'工作周报', emoji:'📊', desc:'工作总结汇报', fields:[
+    {key:'done',label:'本周完成',type:'textarea',placeholder:'如：完成首页改版、修复10个bug'},
+    {key:'progress',label:'进行中的工作',type:'textarea',placeholder:'如：用户调研、需求评审'},
+    {key:'plan',label:'下周计划',type:'textarea',placeholder:'如：启动新功能开发'},
+    {key:'issues',label:'问题/风险（可选）',type:'textarea',placeholder:'如：设计资源不足，可能延期'}
+  ]},
+  { id:'apology', name:'道歉信', emoji:'🙏', desc:'真诚道歉文案', fields:[
+    {key:'recipient',label:'道歉对象',type:'input',placeholder:'如：客户、朋友、领导'},
+    {key:'incident',label:'事件描述',type:'textarea',placeholder:'如：项目延期交付'},
+    {key:'cause',label:'原因说明',type:'input',placeholder:'如：需求变更导致工期不足'},
+    {key:'remedy',label:'补救措施',type:'textarea',placeholder:'如：加班赶工、提供补偿方案'}
+  ]},
+  { id:'thanks', name:'感谢信', emoji:'💐', desc:'表达感谢之情', fields:[
+    {key:'recipient',label:'感谢对象',type:'input',placeholder:'如：导师、同事、客户'},
+    {key:'reason',label:'感谢原因',type:'textarea',placeholder:'如：项目中给予的帮助和指导'},
+    {key:'details',label:'具体事例',type:'textarea',placeholder:'如：在关键节点提供了技术支持'},
+    {key:'relationship',label:'关系描述',type:'input',placeholder:'如：合作三年的伙伴'}
+  ]}
+];
+
+let currentType = null;
+let currentTone = '正式';
+let history = JSON.parse(localStorage.getItem('ai_writer_history') || '[]');
+
+// ========== Init ==========
+function init() {
+  const apiKey = localStorage.getItem('ai_writer_apikey') || '';
+  document.getElementById('apiKey').value = apiKey;
+  renderTypeGrid();
+  renderHistory();
+  // Tone buttons
+  document.getElementById('toneGroup').addEventListener('click', e => {
+    const btn = e.target.closest('.tone-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTone = btn.dataset.tone;
+  });
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (key) {
+    localStorage.setItem('ai_writer_apikey', key);
+    alert('API Key 已保存 ✅');
+  }
+}
+
+// ========== Type Grid ==========
+function renderTypeGrid() {
+  const grid = document.getElementById('typeGrid');
+  grid.innerHTML = TYPES.map(t => `
+    <div class="type-card" data-id="${t.id}" onclick="selectType('${t.id}')">
+      <span class="emoji">${t.emoji}</span>
+      <div class="name">${t.name}</div>
+      <div class="desc">${t.desc}</div>
+    </div>
+  `).join('');
+}
+
+function selectType(id) {
+  currentType = TYPES.find(t => t.id === id);
+  if (!currentType) return;
+  // Update card active state
+  document.querySelectorAll('.type-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+  // Build form
+  const panel = document.getElementById('formPanel');
+  document.getElementById('formTitle').textContent = currentType.name + ' - 填写信息';
+  const fieldsHtml = currentType.fields.map(f => `
+    <div class="form-group">
+      <label>${f.label}</label>
+      ${f.type === 'textarea'
+        ? `<textarea id="field_${f.key}" placeholder="${f.placeholder}"></textarea>`
+        : `<input type="text" id="field_${f.key}" placeholder="${f.placeholder}" />`}
+    </div>
+  `).join('');
+  document.getElementById('formFields').innerHTML = fieldsHtml;
+  panel.classList.add('show');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Clear previous results
+  document.getElementById('results').innerHTML = '';
+}
+
+// ========== Generate ==========
+async function generate() {
+  const apiKey = localStorage.getItem('ai_writer_apikey');
+  if (!apiKey) { alert('请先填写并保存 DeepSeek API Key'); return; }
+  if (!currentType) { alert('请先选择文案类型'); return; }
+
+  // Collect form data
+  const data = {};
+  let hasContent = false;
+  currentType.fields.forEach(f => {
+    const val = document.getElementById('field_' + f.key)?.value?.trim() || '';
+    data[f.key] = val;
+    if (val) hasContent = true;
+  });
+  if (!hasContent) { alert('请至少填写一项信息'); return; }
+
+  const versionCount = parseInt(document.getElementById('versionCount').value);
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>AI 正在创作中...';
+  document.getElementById('results').innerHTML = '';
+
+  const prompt = buildPrompt(currentType, data, currentTone, versionCount);
+
+  try {
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: '你是一位专业的中文文案写作专家，擅长各种类型的文案创作。请严格按照用户要求的格式输出。' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.85,
+        max_tokens: 4000
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API 请求失败 (${response.status})`);
+    }
+
+    const result = await response.json();
+    const text = result.choices?.[0]?.message?.content || '';
+    const versions = parseVersions(text, versionCount);
+    renderResults(versions);
+
+    // Save to history
+    const record = {
+      id: Date.now(),
+      type: currentType.name,
+      emoji: currentType.emoji,
+      tone: currentTone,
+      input: data,
+      versions: versions,
+      time: new Date().toLocaleString('zh-CN')
+    };
+    history.unshift(record);
+    if (history.length > 50) history = history.slice(0, 50);
+    localStorage.setItem('ai_writer_history', JSON.stringify(history));
+    renderHistory();
+
+  } catch (err) {
+    document.getElementById('results').innerHTML = `
+      <div class="result-card" style="border-left:3px solid #ef4444">
+        <div class="content" style="color:#ef4444">❌ 生成失败：${escapeHtml(err.message)}</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🚀 生成文案';
+  }
+}
+
+function buildPrompt(type, data, tone, count) {
+  const infoLines = type.fields
+    .filter(f => data[f.key])
+    .map(f => `${f.label}：${data[f.key]}`)
+    .join('\n');
+
+  return `请为我生成 ${count} 个不同版本的【${type.name}】文案。
+
+输入信息：
+${infoLines}
+
+语气风格：${tone}
+
+要求：
+1. 生成 ${count} 个风格各异的版本
+2. 每个版本用"===版本X==="分隔（X为数字）
+3. 语气保持"${tone}"风格
+4. 内容要有吸引力，符合${type.name}的特点
+5. 直接输出文案内容，不要加多余的解释
+${type.id === 'xiaohongshu' ? '6. 小红书风格：标题要有emoji和吸引力，正文用短句、emoji点缀，结尾加相关话题标签\n7. 标题和正文之间空一行' : ''}
+${type.id === 'moments' ? '6. 朋友圈风格：简短精炼，可以文艺也可以接地气，适合配图发布' : ''}
+${type.id === 'email' ? '6. 邮件格式：包含称呼、正文、结尾敬语、署名占位' : ''}
+${type.id === 'weekly' ? '6. 周报格式：结构清晰，分点列出，数据化表达' : ''}`;
+}
+
+function parseVersions(text, expectedCount) {
+  // Try splitting by ===版本X===
+  const parts = text.split(/===\s*版本\s*\d+\s*===/).filter(s => s.trim());
+  if (parts.length >= 2) return parts.map(s => s.trim());
+  // Fallback: split by 版本X：or 版本 X or **版本X**
+  const parts2 = text.split(/(?:\*{0,2})版本\s*\d+[：:.]?\s*(?:\*{0,2})\n/).filter(s => s.trim());
+  if (parts2.length >= 2) return parts2.map(s => s.trim());
+  // Last resort: return as single version
+  return [text.trim()];
+}
+
+function renderResults(versions) {
+  const container = document.getElementById('results');
+  container.innerHTML = '<div class="section-title"><span class="icon">✨</span> 生成结果</div>' +
+    versions.map((v, i) => `
+      <div class="result-card">
+        <span class="version-tag">版本 ${i + 1}</span>
+        <div class="content">${escapeHtml(v)}</div>
+        <div class="actions">
+          <button onclick="copyText(this, ${i})">📋 复制</button>
+        </div>
+      </div>
+    `).join('');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Store for copy
+  window._currentVersions = versions;
+}
+
+function copyText(btn, index) {
+  const text = window._currentVersions?.[index] || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '✅ 已复制';
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '📋 复制'; }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.classList.add('copied');
+    btn.innerHTML = '✅ 已复制';
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '📋 复制'; }, 2000);
+  });
+}
+
+// ========== History ==========
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const panel = document.getElementById('historyPanel');
+  if (history.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item" onclick="loadHistory(${i})">
+      <div class="meta">
+        <span class="tag">${h.emoji} ${h.type} · ${h.tone}</span>
+        <span>
+          <button class="del-btn" onclick="event.stopPropagation();deleteHistory(${i})">删除</button>
+          <span class="time">${h.time}</span>
+        </span>
+      </div>
+      <div class="preview">${escapeHtml((h.versions?.[0] || '').substring(0, 80))}...</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(index) {
+  const h = history[index];
+  if (!h) return;
+  window._currentVersions = h.versions;
+  renderResults(h.versions);
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteHistory(index) {
+  history.splice(index, 1);
+  localStorage.setItem('ai_writer_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function clearHistory() {
+  if (!confirm('确定清空所有历史记录？')) return;
+  history = [];
+  localStorage.setItem('ai_writer_history', '[]');
+  renderHistory();
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ========== Start ==========
+init();
+</script>
+</body>
+</html>
